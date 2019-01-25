@@ -4,17 +4,13 @@ import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 
-
 @SpringBootApplication
 class ServerApplication {
-    companion object {
-        val LOG = LoggerFactory.getLogger("AuthenticationService")!!
-    }
-
+  companion object {
+    val LOG = LoggerFactory.getLogger("AuthenticationService")
+  }
 }
-
 
 fun main(args: Array<String>) {
-    runApplication<ServerApplication>(*args)
+  runApplication<ServerApplication>(*args)
 }
-

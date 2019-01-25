@@ -1,71 +1,102 @@
 package com.ggj19.server.api
 
-import com.ggj19.server.dtos.GameStateDTO
+import com.ggj19.server.dtos.PlayerId
+import com.ggj19.server.dtos.RoomInformation
+import com.ggj19.server.dtos.RoomName
+import com.ggj19.server.dtos.RoomState
+import com.ggj19.server.dtos.RoomState.Playing
+import com.ggj19.server.dtos.RoomState.Room
+import com.ggj19.server.dtos.asRoomInformation
+import com.github.javafaker.Faker
 import io.swagger.v3.oas.annotations.OpenAPIDefinition
-import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.info.Info
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.stereotype.Component
-import java.lang.RuntimeException
-import javax.ws.rs.*
+import javax.ws.rs.Consumes
+import javax.ws.rs.FormParam
+import javax.ws.rs.GET
+import javax.ws.rs.POST
+import javax.ws.rs.Path
+import javax.ws.rs.Produces
+import javax.ws.rs.QueryParam
 import javax.ws.rs.core.MediaType
+import javax.ws.rs.core.MediaType.APPLICATION_FORM_URLENCODED
 
+// TODO(nik) talk about errors with Carlo.
 @Path("/game")
 @Produces(MediaType.APPLICATION_JSON)
 @Component
-@OpenAPIDefinition(
-        info = Info(title = "Game Server", version = "1.0.0")
-)
+@OpenAPIDefinition(info = Info(title = "Game Server", version = "1.0.0"))
 @Tag(name = "GameApi")
 class GameApi {
+  private val faker = Faker()
+  private val rooms = HashMap<RoomName, RoomState>()
 
-    @GET
-    fun helloWorld(
+  @POST @Path("/start-room") @Consumes(APPLICATION_FORM_URLENCODED) fun startRoom(
+    @FormParam("playerId") playerId: PlayerId,
+    @FormParam("roomName") roomName: RoomName
+  ): RoomInformation {
+    val state: RoomState
 
-    ): String {
-        if (true){
-            throw RuntimeException()
+    synchronized(rooms) {
+      state = rooms[roomName] ?: throw IllegalArgumentException("Can't find a room with the name: $roomName")
+    }
+
+    when (state) {
+      is Room -> {
+        require(state.owner != playerId) { "You're not the owner of the room and hence can't start the room" }
+
+        synchronized(rooms) {
+          rooms[roomName] = Playing(state.players)
         }
-        return "Hello"
+      }
+      is Playing -> {
+        throw IllegalArgumentException("Game has already started")
+      }
     }
 
-    @POST
-    @Path("/some-post")
-    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
-    fun post(
-            @FormParam("someParam")
-            param:String
-    ): GameStateDTO {
-        return GameStateDTO(1)
-    }
-    @POST
-    @Path("/some-post/{param}")
-    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
-    fun postQuery(
-            @QueryParam("param")
-            param:String
-    ): GameStateDTO {
-        return GameStateDTO(1)
+    return state.asRoomInformation()
+  }
+
+  @POST @Path("/create-room") @Consumes(APPLICATION_FORM_URLENCODED) fun createRoom(
+    @FormParam("playerId") playerId: PlayerId
+  ): Room {
+    val roomName = RoomName(faker.name().fullName()) // For the Game Jam we will assume we won't clash and override a room with the same name.
+    val room = RoomState.Room(roomName, playerId, listOf(playerId))
+
+    synchronized(rooms) {
+      rooms[roomName] = room
     }
 
-    @POST
-    @Path("/some-post-body")
-    fun postBody(
-            gameStateDTO: GameStateDTO
-    ): GameStateDTO {
-        return gameStateDTO
+    return room
+  }
+
+  @POST @Path("/join-room") @Consumes(APPLICATION_FORM_URLENCODED) fun joinRoom(
+    @FormParam("playerId") playerId: PlayerId,
+    @FormParam("roomName") roomName: RoomName
+  ): RoomInformation {
+    val room: RoomState
+
+    synchronized(rooms) {
+      room = rooms[roomName] ?: throw IllegalArgumentException("Can't find a room with the name: $roomName")
+
+      if (room.players.contains(playerId)) {
+        throw IllegalArgumentException("You are already part of the room with the name: $roomName")
+      }
+
+      rooms.put(roomName, room.copyJoining(playerId))
     }
 
+    return room.asRoomInformation()
+  }
 
+  @GET @Path("/room-information") fun roomInformation(@QueryParam("roomName") roomName: RoomName): RoomInformation {
+    val room: RoomState
 
-    @GET
-    @Path("/gett-params")
-    fun get(
-            @QueryParam("test")
-            test:String
-    ): GameStateDTO {
-        return GameStateDTO(1)
+    synchronized(rooms) {
+      room = rooms[roomName] ?: throw IllegalArgumentException("Can't find a room with the name: $roomName")
     }
 
-
+    return room.asRoomInformation()
+  }
 }
