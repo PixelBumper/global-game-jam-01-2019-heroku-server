@@ -79,11 +79,11 @@ class GameApi {
   @Operation(operationId = "createRoom")
   fun createRoom(
     @QueryParam("playerId") playerId: PlayerId,
-    @QueryParam("possibleThreats") possibleThreats: List<RoleThreat>
+    @QueryParam("possibleThreats") possibleThreats: String
   ): Room {
     // For the Game Jam we will assume we won't clash and override a room with the same name.
     val roomName = RoomName(faker.name().firstName())
-    val room = RoomState.Room(listOf(playerId), possibleThreats, roomName, playerId)
+    val room = RoomState.Room(listOf(playerId), possibleThreats.split(',').map { RoleThreat(it.trim()) }, roomName, playerId)
 
     synchronized(rooms) {
       rooms[roomName] = room
