@@ -6,15 +6,13 @@ import org.springframework.web.bind.annotation.RestController
 
 private const val PATH = "/error"
 
-@RestController
-class IndexController : ErrorController {
+@RestController class IndexController : ErrorController {
+  @RequestMapping(value = [PATH])
+  fun error(): String {
+    return "Error handling"
+  }
 
-    @RequestMapping(value = [PATH])
-    fun error(): String {
-        return "Error handling"
-    }
-
-    override fun getErrorPath(): String {
-        return PATH
-    }
+  override fun getErrorPath(): String {
+    return PATH
+  }
 }
