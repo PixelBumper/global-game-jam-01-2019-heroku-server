@@ -87,11 +87,14 @@ class GameApi(
   fun createRoom(
     @NotNull @QueryParam("playerId") playerId: PlayerId,
     @NotNull @QueryParam("possibleThreats") possibleThreats: String,
+    @QueryParam("roundLengthInSeconds") roundLengthInSeconds: Int?,
     @QueryParam("seed") seed: Long?
   ): Room {
     val encodedPossibleThreats = possibleThreats.split(',')
         .map { RoleThreat(it.trim()) }
     if (encodedPossibleThreats.size < 5) throw ClientErrorException("Not allowed to create a room with less than 5 possible threats", 422)
+
+    // TODO roundLengthInSeconds ?: 10
 
     // For the Game Jam we will assume we won't clash and override a room with the same name.
     val randomGenerator: RandomGenerator = DefaultRandomGenerator(seed)
@@ -142,6 +145,8 @@ class GameApi(
     @NotNull @QueryParam("playerId") playerId: PlayerId,
     @NotNull @QueryParam("emojis") emojis: String
   ) {
+    // Fill playerEmojis. Between [1 & 2]
+
     getRoom(roomName) { if (!it.players.contains(playerId)) throw ClientErrorException("You are not part of the room with the name: ${roomName.name}", 422) }
 
     val encodedEmojis = emojis.split(',').map { it.trim() }
@@ -157,6 +162,8 @@ class GameApi(
     @NotNull @QueryParam("playerId") playerId: PlayerId,
     @NotNull @QueryParam("role") role: String
   ) {
+    // Fill playedPlayerRoles.
+
     getRoom(roomName) { if (!it.players.contains(playerId)) throw ClientErrorException("You are not part of the room with the name: ${roomName.name}", 422) }
   }
 

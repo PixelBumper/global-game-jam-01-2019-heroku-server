@@ -7,6 +7,7 @@ import java.time.Instant
 inline class RoleThreat(val value: String)
 inline class PlayerId(val name: String)
 inline class RoomName(val name: String)
+inline class Emoji(val emoji: String)
 
 sealed class RoomState {
   abstract val players: List<PlayerId>
@@ -26,6 +27,9 @@ sealed class RoomState {
     override val players: List<PlayerId>,
     override val possibleThreats: List<RoleThreat>,
     val forbiddenRoles: Map<PlayerId, RoleThreat>,
+    val playedPlayerRoles: Map<PlayerId, RoleThreat>,
+    val playerEmojis: Map<PlayerId, Emoji>,
+    val playerEmojisHistory: Map<PlayerId, List<Emoji>>,
     val lastFailedThreats: List<RoleThreat>,
     val openThreats: List<RoleThreat>,
     val roundEndingTime: Instant,
