@@ -9,7 +9,7 @@ class DefaultRandomGenerator(
   private val random = Random().apply { if (seed != null) setSeed(seed) }
   private val faker = Faker(random)
 
-  override fun generateRoomName() = faker.funnyName().name()
+  override fun generateRoomName() = faker.name().firstName()
 
   override fun nextInt(bounds: Int) = random.nextInt(bounds)
 

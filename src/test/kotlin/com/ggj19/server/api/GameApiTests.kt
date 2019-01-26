@@ -301,7 +301,7 @@ import javax.ws.rs.NotFoundException
             possibleThreatShooter, possibleThreatEngineer, possibleThreatPilot,
             possibleThreatLazy, possibleThreatMusician
         ),
-        RoomName("Jim Laucher"),
+        RoomName("Dariana"),
         player1,
         10L,
         9,
