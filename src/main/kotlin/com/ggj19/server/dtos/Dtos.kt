@@ -1,5 +1,6 @@
 package com.ggj19.server.dtos
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import com.ggj19.server.dtos.RoomState.Playing
 import com.ggj19.server.dtos.RoomState.Room
 import java.time.Instant
@@ -12,11 +13,13 @@ inline class Emoji(val emoji: String)
 sealed class RoomState {
   abstract val players: List<PlayerId>
   abstract val possibleThreats: List<RoleThreat>
+  abstract val roundLengthInSeconds: Long
   abstract fun copyJoining(playerId: PlayerId): RoomState
   
   data class Room(
     override val players: List<PlayerId>,
     override val possibleThreats: List<RoleThreat>,
+    @JsonIgnore override val roundLengthInSeconds: Long,
     val name: RoomName,
     val owner: PlayerId
   ) : RoomState() {
@@ -26,10 +29,11 @@ sealed class RoomState {
   data class Playing(
     override val players: List<PlayerId>,
     override val possibleThreats: List<RoleThreat>,
+    @JsonIgnore override val roundLengthInSeconds: Long,
     val forbiddenRoles: Map<PlayerId, RoleThreat>,
     val playedPlayerRoles: Map<PlayerId, RoleThreat>,
-    val playerEmojis: Map<PlayerId, Emoji>,
-    val playerEmojisHistory: Map<PlayerId, List<Emoji>>,
+    val playerEmojis: Map<PlayerId, List<Emoji>>,
+    val playerEmojisHistory: Map<PlayerId, List<List<Emoji>>>,
     val lastFailedThreats: List<RoleThreat>,
     val openThreats: List<RoleThreat>,
     val roundEndingTime: Instant,
