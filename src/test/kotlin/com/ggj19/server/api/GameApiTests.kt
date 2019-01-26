@@ -18,7 +18,6 @@ import org.junit.runner.RunWith
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.junit4.SpringRunner
 import java.time.Instant
-import java.util.concurrent.TimeUnit
 import javax.ws.rs.ClientErrorException
 import javax.ws.rs.NotFoundException
 
@@ -55,6 +54,36 @@ import javax.ws.rs.NotFoundException
     val room = createRoom("SHOOTER, ENGINEER, PILOT, LAZY, MUSICIAN")
 
     assertThat(gameApi.roomInformation(room.name)).isEqualTo(RoomInformation(room, null))
+  }
+
+  @Test fun roomInformationTransitioning() {
+    val room = createRoom("SHOOTER, ENGINEER, PILOT, LAZY, MUSICIAN")
+    gameApi.startRoom(room.name, player1)
+
+    val information = gameApi.sendEmojis(room.name, player1, "eggplant")
+
+    clock.time = clock.time.plusSeconds(room.roundLengthInSeconds) // Simulate that Emoji phase is over.
+    assertThat(gameApi.roomInformation(room.name)).isEqualTo(RoomInformation(null, information.playing!!.copy(
+        version = 3,
+        roundEndingTime = clock.time.plusSeconds(10),
+        currentPhase = PHASE_ROLE
+    )))
+
+    gameApi.setRole(room.name, player1, possibleThreatLazy)
+
+    clock.time = clock.time.plusSeconds(room.roundLengthInSeconds)
+    assertThat(gameApi.roomInformation(room.name)).isEqualTo(RoomInformation(null, information.playing!!.copy(
+        version = 5,
+        forbiddenRoles = mapOf(player1 to possibleThreatLazy),
+        playedPlayerRoles = emptyMap(),
+        playerEmojis = emptyMap(),
+        playerEmojisHistory = mapOf(player1 to listOf(listOf(Emoji("eggplant")))),
+        lastFailedThreats = emptyList(),
+        openThreats = listOf(possibleThreatShooter),
+        roundEndingTime = clock.time.plusSeconds(10),
+        currentPhase = PHASE_EMOJIS,
+        currentRoundNumber = 1
+    )))
   }
 
   @Test fun joinCreatedRoom() {
@@ -101,7 +130,7 @@ import javax.ws.rs.NotFoundException
         playerEmojisHistory = emptyMap(),
         lastFailedThreats = emptyList(),
         openThreats = listOf(possibleThreatLazy),
-        roundEndingTime = clock.time().plusMillis(TimeUnit.SECONDS.toMillis(room.roundLengthInSeconds)),
+        roundEndingTime = clock.time().plusSeconds(room.roundLengthInSeconds),
         currentPhase = PHASE_EMOJIS,
         currentRoundNumber = 0,
         maxRoundNumber = 9
@@ -133,7 +162,7 @@ import javax.ws.rs.NotFoundException
         playerEmojisHistory = emptyMap(),
         lastFailedThreats = emptyList(),
         openThreats = listOf(possibleThreatLazy, possibleThreatShooter, possibleThreatMusician),
-        roundEndingTime = clock.time().plusMillis(TimeUnit.SECONDS.toMillis(room.roundLengthInSeconds)),
+        roundEndingTime = clock.time().plusSeconds(room.roundLengthInSeconds),
         currentPhase = PHASE_EMOJIS,
         currentRoundNumber = 0,
         maxRoundNumber = 9

@@ -15,6 +15,7 @@ import com.ggj19.server.dtos.RoomState.Playing
 import com.ggj19.server.dtos.RoomState.Room
 import com.ggj19.server.random.DefaultRandomGenerator
 import com.ggj19.server.random.RandomGenerator
+import com.ggj19.server.selectiveMinus
 import com.google.common.annotations.VisibleForTesting
 import io.swagger.v3.oas.annotations.OpenAPIDefinition
 import io.swagger.v3.oas.annotations.Operation
@@ -22,7 +23,6 @@ import io.swagger.v3.oas.annotations.info.Info
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.stereotype.Component
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.TimeUnit
 import javax.validation.constraints.NotNull
 import javax.ws.rs.ClientErrorException
 import javax.ws.rs.GET
@@ -72,7 +72,7 @@ class GameApi(
             playerEmojisHistory = emptyMap(),
             lastFailedThreats = emptyList(),
             openThreats = randomGenerator.randomElements(room.possibleThreats, room.maxPossibleAmountOfThreats()),
-            roundEndingTime = clock.time().plusMillis(TimeUnit.SECONDS.toMillis(room.roundLengthInSeconds)),
+            roundEndingTime = clock.time().plusSeconds(room.roundLengthInSeconds),
             currentPhase = PHASE_EMOJIS,
             currentRoundNumber = 0,
             maxRoundNumber = room.numberOfRounds
@@ -143,7 +143,8 @@ class GameApi(
     return when (room) {
       is Room -> room.asRoomInformation()
       is Playing -> {
-        val isRoundDue = room.roundEndingTime >= clock.time()
+        val time = clock.time()
+        val isRoundDue = room.roundEndingTime >= time
 
         if (isRoundDue) {
           val currentPhase = room.currentPhase
@@ -152,7 +153,7 @@ class GameApi(
           val newRoom = when (currentPhase) {
             PHASE_EMOJIS -> room.copy(
                 version = room.version + 1,
-                roundEndingTime = clock.time().plusMillis(room.roundLengthInSeconds),
+                roundEndingTime = time.plusSeconds(room.roundLengthInSeconds),
                 currentPhase = PHASE_ROLE
             )
             PHASE_ROLE -> room.copy(
@@ -161,9 +162,9 @@ class GameApi(
                 playedPlayerRoles = emptyMap(),
                 playerEmojis = emptyMap(),
                 playerEmojisHistory = room.players.map { playerId -> playerId to room.playerEmojisHistory.getOrDefault(playerId, listOf()) + listOf(room.playerEmojis[playerId] ?: emptyList()) }.toMap(),
-                lastFailedThreats = room.openThreats, // TODO(nik) ask GameDesign which way they want to have it here.
+                lastFailedThreats = room.openThreats.selectiveMinus(room.playedPlayerRoles.values),
                 openThreats = randomGenerator.randomElements(room.possibleThreats, room.maxPossibleAmountOfThreats()),
-                roundEndingTime = clock.time().plusMillis(room.roundLengthInSeconds),
+                roundEndingTime = time.plusSeconds(room.roundLengthInSeconds),
                 currentPhase = PHASE_EMOJIS,
                 currentRoundNumber = room.currentRoundNumber + 1
             )
