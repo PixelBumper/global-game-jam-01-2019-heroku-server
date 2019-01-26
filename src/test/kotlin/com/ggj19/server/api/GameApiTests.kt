@@ -100,8 +100,8 @@ import javax.ws.rs.NotFoundException
         playerEmojis = emptyMap(),
         playerEmojisHistory = emptyMap(),
         lastFailedThreats = emptyList(),
-        openThreats = listOf(possibleThreatShooter),
-        roundEndingTime = clock.time().plusMillis(TimeUnit.SECONDS.toMillis(10)),
+        openThreats = listOf(possibleThreatLazy),
+        roundEndingTime = clock.time().plusMillis(TimeUnit.SECONDS.toMillis(room.roundLengthInSeconds)),
         currentPhase = PHASE_EMOJIS,
         currentRoundNumber = 0,
         maxRoundNumber = 9
@@ -132,8 +132,8 @@ import javax.ws.rs.NotFoundException
         playerEmojis = emptyMap(),
         playerEmojisHistory = emptyMap(),
         lastFailedThreats = emptyList(),
-        openThreats = listOf(possibleThreatShooter),
-        roundEndingTime = clock.time().plusMillis(TimeUnit.SECONDS.toMillis(10)),
+        openThreats = listOf(possibleThreatLazy, possibleThreatShooter, possibleThreatMusician),
+        roundEndingTime = clock.time().plusMillis(TimeUnit.SECONDS.toMillis(room.roundLengthInSeconds)),
         currentPhase = PHASE_EMOJIS,
         currentRoundNumber = 0,
         maxRoundNumber = 9
@@ -262,7 +262,7 @@ import javax.ws.rs.NotFoundException
   // TODO(us) should we allow players joining while the game has already started?
 
   private fun createRoom(possibleThreats: String): Room {
-    val room = gameApi.createRoom(player1, possibleThreats, roundLengthInSeconds = 10L, seed = 30L)
+    val room = gameApi.createRoom(player1, possibleThreats, roundLengthInSeconds = 10L, numberOfRounds = 9, seed = 30L)
 
     assertThat(room).isEqualTo(Room(
         listOf(player1),
@@ -270,9 +270,10 @@ import javax.ws.rs.NotFoundException
             possibleThreatShooter, possibleThreatEngineer, possibleThreatPilot,
             possibleThreatLazy, possibleThreatMusician
         ),
-        10L,
         RoomName("Jim Laucher"),
-        player1
+        player1,
+        10L,
+        9
     ))
 
     return room

@@ -3,6 +3,7 @@ package com.ggj19.server.api
 import com.ggj19.server.clock.Clock
 import com.ggj19.server.dtos.Emoji
 import com.ggj19.server.dtos.Phase
+import com.ggj19.server.dtos.Phase.PHASE_DOOMED
 import com.ggj19.server.dtos.Phase.PHASE_EMOJIS
 import com.ggj19.server.dtos.Phase.PHASE_ROLE
 import com.ggj19.server.dtos.PlayerId
@@ -60,9 +61,6 @@ class GameApi(
 
         val randomGenerator = randomGenerators.getValue(roomName)
 
-        val maxPossibleAmount = minOf(room.players.size, room.possibleThreats.size)
-        val numberOfThreats = maxOf(1, randomGenerator.nextInt(maxPossibleAmount))
-
         val newRoom = Playing(
             players = room.players,
             possibleThreats = room.possibleThreats,
@@ -73,11 +71,11 @@ class GameApi(
             playerEmojis = emptyMap(),
             playerEmojisHistory = emptyMap(),
             lastFailedThreats = emptyList(),
-            openThreats = randomGenerator.randomElements(room.possibleThreats, numberOfThreats),
-            roundEndingTime = clock.time().plusMillis(TimeUnit.SECONDS.toMillis(10)),
+            openThreats = randomGenerator.randomElements(room.possibleThreats, room.maxPossibleAmountOfThreats()),
+            roundEndingTime = clock.time().plusMillis(TimeUnit.SECONDS.toMillis(room.roundLengthInSeconds)),
             currentPhase = PHASE_EMOJIS,
             currentRoundNumber = 0,
-            maxRoundNumber = 5 + randomGenerator.nextInt(10)
+            maxRoundNumber = room.numberOfRounds
         )
 
         synchronized(rooms) {
@@ -95,6 +93,7 @@ class GameApi(
   fun createRoom(
     @NotNull @QueryParam("playerId") playerId: PlayerId,
     @NotNull @QueryParam("possibleThreats") possibleThreats: String,
+    @QueryParam("numberOfRounds") numberOfRounds: Int?,
     @QueryParam("roundLengthInSeconds") roundLengthInSeconds: Long?,
     @QueryParam("seed") seed: Long?
   ): Room {
@@ -108,8 +107,8 @@ class GameApi(
     val roomName = RoomName(randomGenerator.generateRoomName())
     randomGenerators[roomName] = randomGenerator
 
-    val nonNullRoundLengthInSeconds = roundLengthInSeconds ?: 10L
-    val room = RoomState.Room(listOf(playerId), encodedPossibleThreats, nonNullRoundLengthInSeconds, roomName, playerId)
+    val room = RoomState.Room(listOf(playerId), encodedPossibleThreats, roomName, playerId,
+        roundLengthInSeconds = roundLengthInSeconds ?: 10L, numberOfRounds = numberOfRounds ?: 5 + randomGenerator.nextInt(10))
 
     synchronized(rooms) {
       rooms[roomName] = room
@@ -139,7 +138,45 @@ class GameApi(
   fun roomInformation(
     @NotNull @QueryParam("roomName") roomName: RoomName
   ): RoomInformation {
-    return getRoom(roomName).asRoomInformation()
+    val room = getRoom(roomName)
+
+    return when (room) {
+      is Room -> room.asRoomInformation()
+      is Playing -> {
+        val isRoundDue = room.roundEndingTime >= clock.time()
+
+        if (isRoundDue) {
+          val currentPhase = room.currentPhase
+          val randomGenerator = randomGenerators.getValue(roomName)
+
+          val newRoom = when (currentPhase) {
+            PHASE_EMOJIS -> room.copy(
+                version = room.version + 1,
+                roundEndingTime = clock.time().plusMillis(room.roundLengthInSeconds),
+                currentPhase = PHASE_ROLE
+            )
+            PHASE_ROLE -> room.copy(
+                version = room.version + 1,
+                forbiddenRoles = room.playedPlayerRoles,
+                playedPlayerRoles = emptyMap(),
+                playerEmojis = emptyMap(),
+                playerEmojisHistory = room.players.map { playerId -> playerId to room.playerEmojisHistory.getOrDefault(playerId, listOf()) + listOf(room.playerEmojis[playerId] ?: emptyList()) }.toMap(),
+                lastFailedThreats = room.openThreats, // TODO(nik) ask GameDesign which way they want to have it here.
+                openThreats = randomGenerator.randomElements(room.possibleThreats, room.maxPossibleAmountOfThreats()),
+                roundEndingTime = clock.time().plusMillis(room.roundLengthInSeconds),
+                currentPhase = PHASE_EMOJIS,
+                currentRoundNumber = room.currentRoundNumber + 1
+            )
+            PHASE_DOOMED -> room // Forward the current state.
+          }
+
+          synchronized(rooms) { rooms[roomName] = newRoom }
+          newRoom.asRoomInformation()
+        } else {
+          room.asRoomInformation()
+        }
+      }
+    }
   }
 
   @GET
