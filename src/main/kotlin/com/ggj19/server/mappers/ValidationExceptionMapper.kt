@@ -1,6 +1,5 @@
 package com.ggj19.server.mappers
 
-import com.ggj19.server.dtos.ErrorMessageDTO
 import org.springframework.stereotype.Component
 import javax.validation.ConstraintViolationException
 import javax.validation.ValidationException
