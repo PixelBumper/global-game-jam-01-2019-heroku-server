@@ -69,7 +69,11 @@ class GameApi(
             roundEndingTime = clock.time().plusMillis(TimeUnit.SECONDS.toMillis(10)),
             currentRoundState = COMMUNICATION_PHASE,
             currentRoundNumber = 0,
-            maxRoundNumber = 5 + randomGenerator.nextInt(10)
+            maxRoundNumber = 5 + randomGenerator.nextInt(10),
+            playedPlayerRoles = mapOf(),
+            playerEmojis = mapOf(),
+            gameWon = false,
+                playerEmojisHistory = mapOf()
         )
 
         synchronized(rooms) {
@@ -144,7 +148,7 @@ class GameApi(
     @NotNull @QueryParam("roomName") roomName: RoomName,
     @NotNull @QueryParam("playerId") playerId: PlayerId,
     @NotNull @QueryParam("emojis") emojis: String
-  ) {
+  ): RoomInformation {
     // Fill playerEmojis. Between [1 & 2]
 
     getRoom(roomName) { if (!it.players.contains(playerId)) throw ClientErrorException("You are not part of the room with the name: ${roomName.name}", 422) }
@@ -152,6 +156,8 @@ class GameApi(
     val encodedEmojis = emojis.split(',').map { it.trim() }
 
     if (encodedEmojis.isEmpty()) throw ClientErrorException("You didn't give me any Emojis :(", 422)
+
+    return getRoom(roomName).asRoomInformation()
   }
 
   @GET
@@ -161,10 +167,11 @@ class GameApi(
     @NotNull @QueryParam("roomName") roomName: RoomName,
     @NotNull @QueryParam("playerId") playerId: PlayerId,
     @NotNull @QueryParam("role") role: String
-  ) {
+  ): RoomInformation {
     // Fill playedPlayerRoles.
 
     getRoom(roomName) { if (!it.players.contains(playerId)) throw ClientErrorException("You are not part of the room with the name: ${roomName.name}", 422) }
+    return getRoom(roomName).asRoomInformation()
   }
 
   private inline fun getRoom(roomName: RoomName, validation: (RoomState) -> Unit = { }): RoomState {
