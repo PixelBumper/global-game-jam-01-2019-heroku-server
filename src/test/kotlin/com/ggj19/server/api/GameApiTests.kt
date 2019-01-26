@@ -189,8 +189,48 @@ import javax.ws.rs.NotFoundException
     )))
   }
 
-  // TODO(nik) sendEmojis
-  // TODO(nik) setRole
+  @Test fun setRoleNotStarted() {
+    val room = createRoom("SHOOTER, ENGINEER, PILOT, LAZY, MUSICIAN")
+
+    assertThrows<ClientErrorException> {
+      gameApi.setRole(room.name, player2, possibleThreatShooter)
+    }.hasMessage("Game hasn't started")
+  }
+
+  @Test fun setRoleWrongRoom() {
+    val room = createRoom("SHOOTER, ENGINEER, PILOT, LAZY, MUSICIAN")
+    gameApi.startRoom(room.name, player1)
+
+    assertThrows<ClientErrorException> {
+      gameApi.setRole(room.name, player2, possibleThreatShooter)
+    }.hasMessage("You are not part of the room with the name: ${room.name.name}")
+  }
+
+  @Test fun doubleSetRole() {
+    val room = createRoom("SHOOTER, ENGINEER, PILOT, LAZY, MUSICIAN")
+    gameApi.startRoom(room.name, player1)
+
+    gameApi.setRole(room.name, player1, possibleThreatShooter)
+    assertThrows<ClientErrorException> {
+      gameApi.setRole(room.name, player1, possibleThreatShooter)
+    }.hasMessage("Already set a role for this round")
+  }
+
+  @Test fun setRole() {
+    val room = createRoom("SHOOTER, ENGINEER, PILOT, LAZY, MUSICIAN")
+    gameApi.joinRoom(room.name, player2)
+    val information = gameApi.startRoom(room.name, player1)
+
+    assertThat(gameApi.setRole(room.name, player1, possibleThreatShooter)).isEqualTo(information.copy(playing = information.playing!!.copy(
+        version = 2,
+        playedPlayerRoles = mapOf(player1 to possibleThreatShooter)
+    )))
+
+    assertThat(gameApi.setRole(room.name, player2, possibleThreatLazy)).isEqualTo(information.copy(playing = information.playing!!.copy(
+        version = 3,
+        playedPlayerRoles = mapOf(player1 to possibleThreatShooter, player2 to possibleThreatLazy)
+    )))
+  }
 
   // TODO(us) should we allow players joining while the game has already started?
 

@@ -47,7 +47,6 @@ class GameApi(
     @NotNull @QueryParam("playerId") playerId: PlayerId
   ): RoomInformation {
     val room = getRoom(roomName)
-    val newRoom: RoomState
 
     when (room) {
       is Playing -> throw ClientErrorException("Game has already started", 422)
@@ -61,7 +60,7 @@ class GameApi(
         val maxPossibleAmount = minOf(room.players.size, room.possibleThreats.size)
         val numberOfThreats = maxOf(1, randomGenerator.nextInt(maxPossibleAmount))
 
-        newRoom = Playing(
+        val newRoom = Playing(
             players = room.players,
             possibleThreats = room.possibleThreats,
             roundLengthInSeconds = room.roundLengthInSeconds,
@@ -81,10 +80,10 @@ class GameApi(
         synchronized(rooms) {
           rooms[roomName] = newRoom
         }
+
+        return newRoom.asRoomInformation()
       }
     }
-
-    return newRoom.asRoomInformation()
   }
 
   @GET
@@ -111,9 +110,8 @@ class GameApi(
 
     synchronized(rooms) {
       rooms[roomName] = room
+      return room
     }
-
-    return room
   }
 
   @GET
@@ -124,14 +122,12 @@ class GameApi(
     @NotNull @QueryParam("playerId") playerId: PlayerId
   ): RoomInformation {
     val room = getRoom(roomName) { if (it.players.contains(playerId)) throw ClientErrorException("You are already part of the room with the name: ${roomName.name}", 422) }
-    val newRoom: RoomState
+    val newRoom = room.copyJoining(playerId)
 
     synchronized(rooms) {
-      newRoom = room.copyJoining(playerId)
       rooms[roomName] = newRoom
+      return newRoom.asRoomInformation()
     }
-
-    return newRoom.asRoomInformation()
   }
 
   @GET
@@ -175,16 +171,20 @@ class GameApi(
   fun setRole(
     @NotNull @QueryParam("roomName") roomName: RoomName,
     @NotNull @QueryParam("playerId") playerId: PlayerId,
-    @NotNull @QueryParam("role") role: String
+    @NotNull @QueryParam("role") role: RoleThreat
   ): RoomInformation {
-    // Fill playedPlayerRoles.
-
     val room = getRoom(roomName) {
       if (it is Room) throw ClientErrorException("Game hasn't started", 422)
       if (!it.players.contains(playerId)) throw ClientErrorException("You are not part of the room with the name: ${roomName.name}", 422)
     }
 
-    return room.asRoomInformation()
+    if ((room as Playing).playedPlayerRoles.containsKey(playerId)) throw ClientErrorException("Already set a role for this round", 422)
+
+    synchronized(rooms) {
+      val new = room.copy(version = room.version + 1, playedPlayerRoles = room.playedPlayerRoles.plus(playerId to role))
+      rooms[roomName] = new
+      return new.asRoomInformation()
+    }
   }
 
   private inline fun getRoom(roomName: RoomName, validation: (RoomState) -> Unit = { }): RoomState {
@@ -192,10 +192,8 @@ class GameApi(
 
     synchronized(rooms) {
       room = rooms[roomName] ?: throw NotFoundException("Can't find a room with the name: ${roomName.name}")
-
       validation.invoke(room)
+      return room
     }
-
-    return room
   }
 }
