@@ -14,12 +14,12 @@ class DefaultRandomGenerator(
   override fun nextInt(bounds: Int) = random.nextInt(bounds)
 
   override fun <T> randomElements(list: List<T>, numberOfElements: Int): List<T> {
-    val set = mutableSetOf<T>()
+    val new = mutableListOf<T>()
 
-    while (set.size != numberOfElements) {
-      set.add(list[random.nextInt(list.size)])
+    while (new.size < numberOfElements) {
+      new.add(list[random.nextInt(list.size)])
     }
 
-    return set.toList()
+    return new.toList()
   }
 }

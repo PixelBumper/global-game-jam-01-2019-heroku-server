@@ -1,21 +1,27 @@
 package com.ggj19.server.api
 
+import com.ggj19.server.clock.TestingClock
 import com.ggj19.server.dtos.PlayerId
 import com.ggj19.server.dtos.RoleThreat
 import com.ggj19.server.dtos.RoomInformation
 import com.ggj19.server.dtos.RoomName
+import com.ggj19.server.dtos.RoomState.Playing
 import com.ggj19.server.dtos.RoomState.Room
+import com.ggj19.server.dtos.RoundState.COMMUNICATION_PHASE
 import org.assertj.core.api.Java6Assertions.assertThat
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.junit4.SpringRunner
+import java.time.Instant
+import java.util.concurrent.TimeUnit
 import javax.ws.rs.ClientErrorException
 import javax.ws.rs.NotFoundException
 
 @SpringBootTest @RunWith(SpringRunner::class) class GameApiTests {
-  @Autowired lateinit var gameApi: GameApi
+  private lateinit var clock: TestingClock
+  private lateinit var gameApi: GameApi
 
   private val possibleThreatShooter = RoleThreat("SHOOTER")
   private val possibleThreatEngineer = RoleThreat("ENGINEER")
@@ -26,6 +32,11 @@ import javax.ws.rs.NotFoundException
   private val player1 = PlayerId("Player 1")
   private val player2 = PlayerId("Player 2")
   private val player3 = PlayerId("Player 3")
+
+  @Before fun setUp() {
+    clock = TestingClock(Instant.ofEpochMilli(35345432))
+    gameApi = GameApi(clock)
+  }
 
   @Test fun createRoom() {
     createRoom("SHOOTER, ENGINEER, PILOT, LAZY, MUSICIAN")
@@ -65,7 +76,57 @@ import javax.ws.rs.NotFoundException
     }.hasMessage("Not allowed to create a room with less than 5 possible threats")
   }
 
-  // TODO(nik) startRoom
+  @Test fun startRoomDifferentOwner() {
+    val room = createRoom("SHOOTER, ENGINEER, PILOT, LAZY, MUSICIAN")
+
+    assertThrows<ClientErrorException> {
+      gameApi.startRoom(room.name, player2)
+    }.hasMessage("You're not the owner of the room and hence can't start the room")
+  }
+
+  @Test fun startRoom() {
+    val room = createRoom("SHOOTER, ENGINEER, PILOT, LAZY, MUSICIAN")
+
+    assertThat(gameApi.startRoom(room.name, player1)).isEqualTo(RoomInformation(null, Playing(
+        players = room.players,
+        possibleThreats = room.possibleThreats,
+        forbiddenRoles = emptyMap(),
+        lastFailedThreats = emptyList(),
+        openThreats = listOf(possibleThreatShooter),
+        roundEndingTime = clock.time().plusMillis(TimeUnit.SECONDS.toMillis(10)),
+        currentRoundState = COMMUNICATION_PHASE,
+        currentRoundNumber = 0,
+        maxRoundNumber = 9
+    )))
+  }
+
+  @Test fun startRoomAlreadyStarted() {
+    val room = createRoom("SHOOTER, ENGINEER, PILOT, LAZY, MUSICIAN")
+
+    gameApi.startRoom(room.name, player1)
+    assertThrows<ClientErrorException> {
+      gameApi.startRoom(room.name, player1)
+    }.hasMessage("Game has already started")
+  }
+
+  @Test fun startRoomMultiplePlayers() {
+    val room = createRoom("SHOOTER, ENGINEER, PILOT, LAZY, MUSICIAN")
+
+    assertThat(gameApi.joinRoom(room.name, player2)).isEqualTo(RoomInformation(room.copy(players = room.players.plus(player2)), null))
+    assertThat(gameApi.joinRoom(room.name, player3)).isEqualTo(RoomInformation(room.copy(players = room.players.plus(player2).plus(player3)), null))
+    assertThat(gameApi.startRoom(room.name, player1)).isEqualTo(RoomInformation(null, Playing(
+        players = room.players.plus(player2).plus(player3),
+        possibleThreats = room.possibleThreats,
+        forbiddenRoles = emptyMap(),
+        lastFailedThreats = emptyList(),
+        openThreats = listOf(possibleThreatShooter),
+        roundEndingTime = clock.time().plusMillis(TimeUnit.SECONDS.toMillis(10)),
+        currentRoundState = COMMUNICATION_PHASE,
+        currentRoundNumber = 0,
+        maxRoundNumber = 9
+    )))
+  }
+
   // TODO(nik) sendEmojis
   // TODO(nik) setRole
 
