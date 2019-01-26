@@ -122,6 +122,7 @@ import javax.ws.rs.NotFoundException
     assertThat(gameApi.startRoom(room.name, player1)).isEqualTo(RoomInformation(null, Playing(
         players = room.players,
         possibleThreats = room.possibleThreats,
+        maximumThreats = room.maximumThreats,
         version = 1,
         roundLengthInSeconds = 10L,
         forbiddenRoles = emptyMap(),
@@ -154,6 +155,7 @@ import javax.ws.rs.NotFoundException
     assertThat(gameApi.startRoom(room.name, player1)).isEqualTo(RoomInformation(null, Playing(
         players = room.players.plus(player2).plus(player3),
         possibleThreats = room.possibleThreats,
+        maximumThreats = room.maximumThreats,
         version = 1,
         roundLengthInSeconds = 10L,
         forbiddenRoles = emptyMap(),
@@ -291,7 +293,7 @@ import javax.ws.rs.NotFoundException
   // TODO(us) should we allow players joining while the game has already started?
 
   private fun createRoom(possibleThreats: String): Room {
-    val room = gameApi.createRoom(player1, possibleThreats, roundLengthInSeconds = 10L, numberOfRounds = 9, seed = 30L)
+    val room = gameApi.createRoom(player1, possibleThreats, roundLengthInSeconds = 10L, numberOfRounds = 9, seed = 30L, maximumThreats = 4)
 
     assertThat(room).isEqualTo(Room(
         listOf(player1),
@@ -302,7 +304,8 @@ import javax.ws.rs.NotFoundException
         RoomName("Jim Laucher"),
         player1,
         10L,
-        9
+        9,
+        4
     ))
 
     return room

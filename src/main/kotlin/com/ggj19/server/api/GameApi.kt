@@ -65,6 +65,7 @@ class GameApi(
             players = room.players,
             possibleThreats = room.possibleThreats,
             roundLengthInSeconds = room.roundLengthInSeconds,
+            maximumThreats = room.maximumThreats,
             version = 1,
             forbiddenRoles = emptyMap(),
             playedPlayerRoles = emptyMap(),
@@ -95,6 +96,7 @@ class GameApi(
     @NotNull @QueryParam("possibleThreats") possibleThreats: String,
     @QueryParam("numberOfRounds") numberOfRounds: Int?,
     @QueryParam("roundLengthInSeconds") roundLengthInSeconds: Long?,
+    @QueryParam("maximumThreats") maximumThreats: Int?,
     @QueryParam("seed") seed: Long?
   ): Room {
     val encodedPossibleThreats = possibleThreats.split(',')
@@ -108,7 +110,9 @@ class GameApi(
     randomGenerators[roomName] = randomGenerator
 
     val room = RoomState.Room(listOf(playerId), encodedPossibleThreats, roomName, playerId,
-        roundLengthInSeconds = roundLengthInSeconds ?: 10L, numberOfRounds = numberOfRounds ?: 5 + randomGenerator.nextInt(10))
+        roundLengthInSeconds = roundLengthInSeconds ?: 10L, numberOfRounds = numberOfRounds ?: 5 + randomGenerator.nextInt(10),
+        maximumThreats = maximumThreats ?: 4
+    )
 
     synchronized(rooms) {
       rooms[roomName] = room
@@ -150,7 +154,7 @@ class GameApi(
           val currentPhase = room.currentPhase
           val randomGenerator = randomGenerators.getValue(roomName)
 
-          val newRoom = when (currentPhase) {
+          var newRoom = when (currentPhase) {
             PHASE_EMOJIS -> room.copy(
                 version = room.version + 1,
                 roundEndingTime = time.plusSeconds(room.roundLengthInSeconds),
@@ -162,13 +166,17 @@ class GameApi(
                 playedPlayerRoles = emptyMap(),
                 playerEmojis = emptyMap(),
                 playerEmojisHistory = room.players.map { playerId -> playerId to room.playerEmojisHistory.getOrDefault(playerId, listOf()) + listOf(room.playerEmojis[playerId] ?: emptyList()) }.toMap(),
-                lastFailedThreats = room.openThreats.selectiveMinus(room.playedPlayerRoles.values),
+                lastFailedThreats = room.lastFailedThreats + room.openThreats.selectiveMinus(room.playedPlayerRoles.values),
                 openThreats = randomGenerator.randomElements(room.possibleThreats, room.maxPossibleAmountOfThreats()),
                 roundEndingTime = time.plusSeconds(room.roundLengthInSeconds),
                 currentPhase = PHASE_EMOJIS,
                 currentRoundNumber = room.currentRoundNumber + 1
             )
             PHASE_DOOMED -> room // Forward the current state.
+          }
+
+          if (newRoom.lastFailedThreats.size + newRoom.openThreats.size >= room.maximumThreats) {
+            newRoom = newRoom.copy(currentPhase = PHASE_DOOMED)
           }
 
           synchronized(rooms) { rooms[roomName] = newRoom }

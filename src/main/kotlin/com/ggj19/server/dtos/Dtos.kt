@@ -14,6 +14,7 @@ sealed class RoomState {
   abstract val players: List<PlayerId>
   abstract val possibleThreats: List<RoleThreat>
   abstract val roundLengthInSeconds: Long
+  abstract val maximumThreats: Int
   abstract fun copyJoining(playerId: PlayerId): RoomState
   
   data class Room(
@@ -22,7 +23,8 @@ sealed class RoomState {
     val name: RoomName,
     val owner: PlayerId,
     @JsonIgnore override val roundLengthInSeconds: Long,
-    val numberOfRounds: Int
+    val numberOfRounds: Int,
+    override val maximumThreats: Int
   ) : RoomState() {
     override fun copyJoining(playerId: PlayerId) = copy(players = players.plus(playerId))
   }
@@ -30,6 +32,7 @@ sealed class RoomState {
   data class Playing(
     override val players: List<PlayerId>,
     override val possibleThreats: List<RoleThreat>,
+    override val maximumThreats: Int,
     @JsonIgnore override val roundLengthInSeconds: Long,
     val version: Int,
     val forbiddenRoles: Map<PlayerId, RoleThreat>,
