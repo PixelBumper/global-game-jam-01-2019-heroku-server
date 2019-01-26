@@ -7,7 +7,7 @@ import org.springframework.boot.runApplication
 @SpringBootApplication
 class ServerApplication {
   companion object {
-    val LOG = LoggerFactory.getLogger("GameServer")!!
+    val LOG = LoggerFactory.getLogger("GameServer")
   }
 }
 
