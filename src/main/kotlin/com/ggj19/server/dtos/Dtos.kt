@@ -1,6 +1,8 @@
 package com.ggj19.server.dtos
 
 import com.fasterxml.jackson.annotation.JsonIgnore
+import com.fasterxml.jackson.annotation.JsonInclude
+import com.fasterxml.jackson.annotation.JsonInclude.Include
 import com.ggj19.server.dtos.RoomState.Playing
 import com.ggj19.server.dtos.RoomState.Room
 import java.time.Instant
@@ -60,6 +62,7 @@ enum class Phase {
   PHASE_DOOMED
 }
 
+@JsonInclude(value = Include.NON_NULL)
 data class RoomInformation(
   val waiting: Room?,
   val playing: Playing?
