@@ -30,6 +30,7 @@ sealed class RoomState {
     override val players: List<PlayerId>,
     override val possibleThreats: List<RoleThreat>,
     @JsonIgnore override val roundLengthInSeconds: Long,
+    val version: Int,
     val forbiddenRoles: Map<PlayerId, RoleThreat>,
     val playedPlayerRoles: Map<PlayerId, RoleThreat>,
     val playerEmojis: Map<PlayerId, List<Emoji>>,
@@ -42,7 +43,7 @@ sealed class RoomState {
     val maxRoundNumber: Int,
     val gameWon: Boolean = currentRoundNumber == maxRoundNumber
   ) : RoomState() {
-    override fun copyJoining(playerId: PlayerId) = copy(players = players.plus(playerId))
+    override fun copyJoining(playerId: PlayerId) = copy(players = players.plus(playerId), version = version + 1)
   }
 
   fun asRoomInformation() = RoomInformation(this as? Room, this as? Playing)

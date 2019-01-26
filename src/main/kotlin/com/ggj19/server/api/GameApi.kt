@@ -65,6 +65,7 @@ class GameApi(
             players = room.players,
             possibleThreats = room.possibleThreats,
             roundLengthInSeconds = room.roundLengthInSeconds,
+            version = 1,
             forbiddenRoles = emptyMap(),
             playedPlayerRoles = emptyMap(),
             playerEmojis = emptyMap(),
@@ -162,7 +163,7 @@ class GameApi(
     if (encodedEmojis.isEmpty() || encodedEmojis.size > 2) throw ClientErrorException("You must send between one and two Emojis :(", 422)
 
     synchronized(rooms) {
-      val new = (room as Playing).copy(playerEmojis = room.playerEmojis.plus(playerId to encodedEmojis))
+      val new = (room as Playing).copy(version = room.version + 1, playerEmojis = room.playerEmojis.plus(playerId to encodedEmojis))
       rooms[roomName] = new
       return new.asRoomInformation()
     }

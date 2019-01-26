@@ -91,6 +91,7 @@ import javax.ws.rs.NotFoundException
     assertThat(gameApi.startRoom(room.name, player1)).isEqualTo(RoomInformation(null, Playing(
         players = room.players,
         possibleThreats = room.possibleThreats,
+        version = 1,
         roundLengthInSeconds = 10L,
         forbiddenRoles = emptyMap(),
         playedPlayerRoles = emptyMap(),
@@ -122,6 +123,7 @@ import javax.ws.rs.NotFoundException
     assertThat(gameApi.startRoom(room.name, player1)).isEqualTo(RoomInformation(null, Playing(
         players = room.players.plus(player2).plus(player3),
         possibleThreats = room.possibleThreats,
+        version = 1,
         roundLengthInSeconds = 10L,
         forbiddenRoles = emptyMap(),
         playedPlayerRoles = emptyMap(),
@@ -177,10 +179,12 @@ import javax.ws.rs.NotFoundException
     val information = gameApi.startRoom(room.name, player1)
 
     assertThat(gameApi.sendEmojis(room.name, player1, "eggplant")).isEqualTo(information.copy(playing = information.playing!!.copy(
+        version = 2,
         playerEmojis = mapOf(player1 to listOf(Emoji("eggplant")))
     )))
 
     assertThat(gameApi.sendEmojis(room.name, player2, "eggplant,apple")).isEqualTo(information.copy(playing = information.playing!!.copy(
+        version = 3,
         playerEmojis = mapOf(player1 to listOf(Emoji("eggplant")), player2 to listOf(Emoji("eggplant"), Emoji("apple")))
     )))
   }
