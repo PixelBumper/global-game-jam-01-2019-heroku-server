@@ -8,18 +8,18 @@ import com.ggj19.server.dtos.RoomState
 import com.ggj19.server.dtos.RoomState.Playing
 import com.ggj19.server.dtos.RoomState.Room
 import com.ggj19.server.dtos.RoundState.COMMUNICATION_PHASE
-import com.ggj19.server.random
-import com.github.javafaker.Faker
+import com.ggj19.server.random.DefaultRandomGenerator
+import com.ggj19.server.random.RandomGenerator
 import io.swagger.v3.oas.annotations.OpenAPIDefinition
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.info.Info
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.stereotype.Component
 import java.time.Instant
-import java.util.Random
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import javax.validation.constraints.NotNull
+import javax.ws.rs.ClientErrorException
 import javax.ws.rs.GET
 import javax.ws.rs.NotAllowedException
 import javax.ws.rs.NotFoundException
@@ -34,9 +34,8 @@ import javax.ws.rs.core.MediaType.APPLICATION_JSON
 @OpenAPIDefinition(info = Info(title = "Game Server", version = "1.0.0"))
 @Tag(name = "GameApi")
 class GameApi {
-  private val faker = Faker()
   private val rooms = HashMap<RoomName, RoomState>()
-  private val randomGenerator = ConcurrentHashMap<RoomName, Random>()
+  private val randomGenerators = ConcurrentHashMap<RoomName, RandomGenerator>()
 
   @GET
   @Path("/start-room")
@@ -54,7 +53,7 @@ class GameApi {
           throw NotAllowedException("You're not the owner of the room and hence can't start the room")
         }
 
-        val random = randomGenerator.getValue(roomName)
+        val randomGenerator = randomGenerators.getValue(roomName)
 
         synchronized(rooms) {
           rooms[roomName] = Playing(
@@ -62,11 +61,11 @@ class GameApi {
               possibleThreats = room.possibleThreats,
               forbiddenRoles = emptyMap(),
               lastFailedThreats = emptyList(),
-              openThreats = room.possibleThreats.random(random, minOf(minOf(minOf(1, room.players.size * 2 / 3), room.players.size), room.possibleThreats.size)),
+              openThreats = randomGenerator.randomElements(room.possibleThreats, minOf(minOf(minOf(1, room.players.size * 2 / 3), room.players.size), room.possibleThreats.size)),
               roundEndingTime = Instant.now().plusMillis(TimeUnit.SECONDS.toMillis(10)),
               currentRoundState = COMMUNICATION_PHASE,
               currentRoundNumber = 0,
-              maxRoundNumber = 5 + random.nextInt(10)
+              maxRoundNumber = 5 + randomGenerator.nextInt(10)
           )
         }
       }
@@ -83,20 +82,20 @@ class GameApi {
     @NotNull @QueryParam("possibleThreats") possibleThreats: String,
     @QueryParam("seed") seed: Long?
   ): Room {
-    // For the Game Jam we will assume we won't clash and override a room with the same name.
-    val roomName = RoomName(faker.name().firstName())
     val encodedPossibleThreats = possibleThreats.split(',')
         .map { RoleThreat(it.trim()) }
+    if (encodedPossibleThreats.size < 5) throw ClientErrorException("Not allowed to create a room with less than 5 possible threats", 422)
 
-    if (encodedPossibleThreats.size < 5) throw NotAllowedException("Not allowed to create a room with less than 5 possible threats")
+    // For the Game Jam we will assume we won't clash and override a room with the same name.
+    val randomGenerator: RandomGenerator = DefaultRandomGenerator(seed)
+    val roomName = RoomName(randomGenerator.generateRoomName())
+    randomGenerators[roomName] = randomGenerator
 
     val room = RoomState.Room(listOf(playerId), encodedPossibleThreats, roomName, playerId)
 
     synchronized(rooms) {
       rooms[roomName] = room
     }
-
-    randomGenerator[roomName] = Random().apply { if (seed != null) setSeed(seed) }
 
     return room
   }
@@ -108,13 +107,15 @@ class GameApi {
     @NotNull @QueryParam("roomName") roomName: RoomName,
     @NotNull @QueryParam("playerId") playerId: PlayerId
   ): RoomInformation {
-    val room = getRoom(roomName) { if (it.players.contains(playerId)) throw NotAllowedException("You are already part of the room with the name: $roomName") }
+    val room = getRoom(roomName) { if (it.players.contains(playerId)) throw ClientErrorException("You are already part of the room with the name: ${roomName.name}", 422) }
+    val newRoom: RoomState
 
     synchronized(rooms) {
-      rooms.put(roomName, room.copyJoining(playerId))
+      newRoom = room.copyJoining(playerId)
+      rooms[roomName] = newRoom
     }
 
-    return room.asRoomInformation()
+    return newRoom.asRoomInformation()
   }
 
   @GET
@@ -134,11 +135,11 @@ class GameApi {
     @NotNull @QueryParam("playerId") playerId: PlayerId,
     @NotNull @QueryParam("emojis") emojis: String
   ) {
-    getRoom(roomName) { if (!it.players.contains(playerId)) throw NotAllowedException("You are not part of the room with the name: $roomName") }
+    getRoom(roomName) { if (!it.players.contains(playerId)) throw ClientErrorException("You are not part of the room with the name: ${roomName.name}", 422) }
 
     val encodedEmojis = emojis.split(',').map { it.trim() }
 
-    if (encodedEmojis.isEmpty()) throw NotAllowedException("You didn't give me any Emojis :(")
+    if (encodedEmojis.isEmpty()) throw ClientErrorException("You didn't give me any Emojis :(", 422)
   }
 
   @GET
@@ -149,14 +150,14 @@ class GameApi {
     @NotNull @QueryParam("playerId") playerId: PlayerId,
     @NotNull @QueryParam("role") role: String
   ) {
-    getRoom(roomName) { if (!it.players.contains(playerId)) throw NotAllowedException("You are not part of the room with the name: $roomName") }
+    getRoom(roomName) { if (!it.players.contains(playerId)) throw ClientErrorException("You are not part of the room with the name: ${roomName.name}", 422) }
   }
 
   private inline fun getRoom(roomName: RoomName, validation: (RoomState) -> Unit = { }): RoomState {
     val room: RoomState
 
     synchronized(rooms) {
-      room = rooms[roomName] ?: throw NotFoundException("Can't find a room with the name: $roomName")
+      room = rooms[roomName] ?: throw NotFoundException("Can't find a room with the name: ${roomName.name}")
 
       validation.invoke(room)
     }
