@@ -1,18 +1,21 @@
 package com.ggj19.server.api
 
 import com.ggj19.server.dtos.PlayerId
+import com.ggj19.server.dtos.RoleThreat
 import com.ggj19.server.dtos.RoomInformation
 import com.ggj19.server.dtos.RoomName
 import com.ggj19.server.dtos.RoomState
 import com.ggj19.server.dtos.RoomState.Playing
 import com.ggj19.server.dtos.RoomState.Room
-import com.ggj19.server.dtos.asRoomInformation
+import com.ggj19.server.dtos.RoundState.COMMUNICATION_PHASE
 import com.github.javafaker.Faker
 import io.swagger.v3.oas.annotations.OpenAPIDefinition
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.info.Info
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.stereotype.Component
+import java.time.Instant
+import java.util.concurrent.TimeUnit
 import javax.ws.rs.GET
 import javax.ws.rs.NotAllowedException
 import javax.ws.rs.NotFoundException
@@ -27,6 +30,8 @@ import javax.ws.rs.core.MediaType.APPLICATION_JSON
 @OpenAPIDefinition(info = Info(title = "Game Server", version = "1.0.0"))
 @Tag(name = "GameApi")
 class GameApi {
+  // TODO(nik) add seed for randomness!
+
   private val faker = Faker()
   private val rooms = HashMap<RoomName, RoomState>()
 
@@ -51,7 +56,17 @@ class GameApi {
         }
 
         synchronized(rooms) {
-          rooms[roomName] = Playing(state.players)
+          rooms[roomName] = Playing(
+              players = state.players,
+              possibleThreats = state.possibleThreats,
+              forbiddenRoles = emptyMap(),
+              lastFailedThreats = emptyList(),
+              openThreats = listOf(state.possibleThreats.first()), // TODO(nik) generate this with randomness.
+              roundEndingTime = Instant.now().plusMillis(TimeUnit.SECONDS.toMillis(10)),
+              currentRoundState = COMMUNICATION_PHASE,
+              currentRoundNumber = 0,
+              maxRoundNumber = 10 // TODO(nik) generate this with randomness.
+          )
         }
       }
     }
@@ -63,11 +78,12 @@ class GameApi {
   @Path("/create-room")
   @Operation(operationId = "createRoom")
   fun createRoom(
-    @QueryParam("playerId") playerId: PlayerId
+    @QueryParam("playerId") playerId: PlayerId,
+    @QueryParam("possibleThreats") possibleThreats: List<RoleThreat>
   ): Room {
     // For the Game Jam we will assume we won't clash and override a room with the same name.
     val roomName = RoomName(faker.name().firstName())
-    val room = RoomState.Room(roomName, playerId, listOf(playerId))
+    val room = RoomState.Room(listOf(playerId), possibleThreats, roomName, playerId)
 
     synchronized(rooms) {
       rooms[roomName] = room

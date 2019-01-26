@@ -1,8 +1,6 @@
 package com.ggj19.server.mappers
 
 import com.ggj19.server.ServerApplication.Companion.LOG
-import com.ggj19.server.dtos.ErrorMessageDTO
-
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Component
 import javax.ws.rs.core.Response
@@ -20,3 +18,8 @@ val INTERNAL_SERVER_ERROR = Response
     return INTERNAL_SERVER_ERROR
   }
 }
+
+class ErrorMessageDTO(
+  val code: Int,
+  val message: String
+)
