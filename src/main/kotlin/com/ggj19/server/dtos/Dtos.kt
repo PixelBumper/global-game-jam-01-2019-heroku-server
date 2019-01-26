@@ -38,7 +38,7 @@ sealed class RoomState {
     val lastFailedThreats: List<RoleThreat>,
     val openThreats: List<RoleThreat>,
     val roundEndingTime: Instant,
-    val currentRoundState: RoundState,
+    val currentPhase: Phase,
     val currentRoundNumber: Int,
     val maxRoundNumber: Int,
     val gameWon: Boolean = currentRoundNumber == maxRoundNumber
@@ -49,10 +49,10 @@ sealed class RoomState {
   fun asRoomInformation() = RoomInformation(this as? Room, this as? Playing)
 }
 
-enum class RoundState {
-  COMMUNICATION_PHASE,
-  PLAYOUT_PHASE,
-  DOOMED_PHASE
+enum class Phase {
+  PHASE_EMOJIS,
+  PHASE_ROLE,
+  PHASE_DOOMED
 }
 
 data class RoomInformation(

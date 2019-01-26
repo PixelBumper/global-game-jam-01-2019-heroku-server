@@ -2,6 +2,9 @@ package com.ggj19.server.api
 
 import com.ggj19.server.clock.Clock
 import com.ggj19.server.dtos.Emoji
+import com.ggj19.server.dtos.Phase
+import com.ggj19.server.dtos.Phase.PHASE_EMOJIS
+import com.ggj19.server.dtos.Phase.PHASE_ROLE
 import com.ggj19.server.dtos.PlayerId
 import com.ggj19.server.dtos.RoleThreat
 import com.ggj19.server.dtos.RoomInformation
@@ -9,9 +12,9 @@ import com.ggj19.server.dtos.RoomName
 import com.ggj19.server.dtos.RoomState
 import com.ggj19.server.dtos.RoomState.Playing
 import com.ggj19.server.dtos.RoomState.Room
-import com.ggj19.server.dtos.RoundState.COMMUNICATION_PHASE
 import com.ggj19.server.random.DefaultRandomGenerator
 import com.ggj19.server.random.RandomGenerator
+import com.google.common.annotations.VisibleForTesting
 import io.swagger.v3.oas.annotations.OpenAPIDefinition
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.info.Info
@@ -72,7 +75,7 @@ class GameApi(
             lastFailedThreats = emptyList(),
             openThreats = randomGenerator.randomElements(room.possibleThreats, numberOfThreats),
             roundEndingTime = clock.time().plusMillis(TimeUnit.SECONDS.toMillis(10)),
-            currentRoundState = COMMUNICATION_PHASE,
+            currentPhase = PHASE_EMOJIS,
             currentRoundNumber = 0,
             maxRoundNumber = 5 + randomGenerator.nextInt(10)
         )
@@ -150,6 +153,7 @@ class GameApi(
     val room = getRoom(roomName) {
       if (it is Room) throw ClientErrorException("Game hasn't started", 422)
       if (!it.players.contains(playerId)) throw ClientErrorException("You are not part of the room with the name: ${roomName.name}", 422)
+      if (it is Playing && it.currentPhase != PHASE_EMOJIS) throw ClientErrorException("Game is not in emoji phase", 422)
     }
 
     val encodedEmojis = emojis.split(',')
@@ -176,12 +180,11 @@ class GameApi(
     val room = getRoom(roomName) {
       if (it is Room) throw ClientErrorException("Game hasn't started", 422)
       if (!it.players.contains(playerId)) throw ClientErrorException("You are not part of the room with the name: ${roomName.name}", 422)
+      if (it is Playing && it.currentPhase != PHASE_ROLE) throw ClientErrorException("Game is not in role phase", 422)
     }
 
-    if ((room as Playing).playedPlayerRoles.containsKey(playerId)) throw ClientErrorException("Already set a role for this round", 422)
-
     synchronized(rooms) {
-      val new = room.copy(version = room.version + 1, playedPlayerRoles = room.playedPlayerRoles.plus(playerId to role))
+      val new = (room as Playing).copy(version = room.version + 1, playedPlayerRoles = room.playedPlayerRoles.plus(playerId to role))
       rooms[roomName] = new
       return new.asRoomInformation()
     }
@@ -194,6 +197,16 @@ class GameApi(
       room = rooms[roomName] ?: throw NotFoundException("Can't find a room with the name: ${roomName.name}")
       validation.invoke(room)
       return room
+    }
+  }
+
+  @VisibleForTesting fun changePhase(roomName: RoomName, phase: Phase): RoomInformation {
+    val room = getRoom(roomName)
+
+    synchronized(rooms) {
+      val new = (room as Playing).copy(currentPhase = phase)
+      rooms[roomName] = new
+      return new.asRoomInformation()
     }
   }
 }
