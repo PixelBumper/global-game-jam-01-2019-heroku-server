@@ -65,7 +65,7 @@ import javax.ws.rs.NotFoundException
     clock.time = clock.time.plusSeconds(room.roundLengthInSeconds) // Simulate that Emoji phase is over.
     assertThat(gameApi.roomInformation(room.name)).isEqualTo(RoomInformation(null, information.playing!!.copy(
         version = 3,
-        roundEndingTime = clock.time.plusSeconds(10),
+        roundEndingTime = clock.time.plusSeconds(10).toEpochMilli(),
         currentPhase = PHASE_ROLE
     )))
 
@@ -80,7 +80,7 @@ import javax.ws.rs.NotFoundException
         playerEmojisHistory = mapOf(player1 to listOf(listOf(Emoji("eggplant")))),
         lastFailedThreats = emptyList(),
         openThreats = listOf(possibleThreatShooter),
-        roundEndingTime = clock.time.plusSeconds(10),
+        roundEndingTime = clock.time.plusSeconds(10).toEpochMilli(),
         currentPhase = PHASE_EMOJIS,
         currentRoundNumber = 1
     )))
@@ -131,7 +131,7 @@ import javax.ws.rs.NotFoundException
         playerEmojisHistory = emptyMap(),
         lastFailedThreats = emptyList(),
         openThreats = listOf(possibleThreatLazy),
-        roundEndingTime = clock.time().plusSeconds(room.roundLengthInSeconds),
+        roundEndingTime = clock.time().plusSeconds(room.roundLengthInSeconds).toEpochMilli(),
         currentPhase = PHASE_EMOJIS,
         currentRoundNumber = 0,
         maxRoundNumber = 9
@@ -164,7 +164,7 @@ import javax.ws.rs.NotFoundException
         playerEmojisHistory = emptyMap(),
         lastFailedThreats = emptyList(),
         openThreats = listOf(possibleThreatLazy, possibleThreatShooter, possibleThreatMusician),
-        roundEndingTime = clock.time().plusSeconds(room.roundLengthInSeconds),
+        roundEndingTime = clock.time().plusSeconds(room.roundLengthInSeconds).toEpochMilli(),
         currentPhase = PHASE_EMOJIS,
         currentRoundNumber = 0,
         maxRoundNumber = 9
