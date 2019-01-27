@@ -62,6 +62,7 @@ class GameApiTests {
     clock.time = clock.time.plusSeconds(room.roundLengthInSeconds) // Simulate that Emoji phase is over.
     assertThat(gameApi.roomInformation(room.name)).isEqualTo(RoomInformation(null, information.playing!!.copy(
         version = 3,
+        currentTime = clock.time.toEpochMilli(),
         roundEndingTime = clock.time.plusSeconds(10).toEpochMilli(),
         currentPhase = PHASE_ROLE
     )))
@@ -77,6 +78,7 @@ class GameApiTests {
         playerEmojisHistory = mapOf(player1 to listOf(listOf(Emoji("eggplant")))),
         lastFailedThreats = emptyList(),
         openThreats = listOf(possibleThreatShooter),
+        currentTime = clock.time.toEpochMilli(),
         roundEndingTime = clock.time.plusSeconds(10).toEpochMilli(),
         currentPhase = PHASE_EMOJIS,
         currentRoundNumber = 1
@@ -128,6 +130,7 @@ class GameApiTests {
         playerEmojisHistory = emptyMap(),
         lastFailedThreats = emptyList(),
         openThreats = listOf(possibleThreatLazy),
+        currentTime = clock.time().toEpochMilli(),
         roundEndingTime = clock.time().plusSeconds(room.roundLengthInSeconds).toEpochMilli(),
         currentPhase = PHASE_EMOJIS,
         currentRoundNumber = 0,
@@ -161,6 +164,7 @@ class GameApiTests {
         playerEmojisHistory = emptyMap(),
         lastFailedThreats = emptyList(),
         openThreats = listOf(possibleThreatLazy, possibleThreatShooter, possibleThreatMusician),
+        currentTime = clock.time().toEpochMilli(),
         roundEndingTime = clock.time().plusSeconds(room.roundLengthInSeconds).toEpochMilli(),
         currentPhase = PHASE_EMOJIS,
         currentRoundNumber = 0,
@@ -286,8 +290,6 @@ class GameApiTests {
       gameApi.setRole(room.name, player1, possibleThreatShooter)
     }.hasMessage("Game is not in role phase")
   }
-
-  // TODO(us) should we allow players joining while the game has already started?
 
   private fun createRoom(possibleThreats: String): Room {
     val room = gameApi.createRoom(player1, possibleThreats, roundLengthInSeconds = 10L, numberOfRounds = 9, seed = 30L, maximumThreats = 4)

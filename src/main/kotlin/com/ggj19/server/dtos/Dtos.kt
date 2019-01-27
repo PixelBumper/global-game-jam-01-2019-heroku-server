@@ -42,6 +42,7 @@ sealed class RoomState {
     val playerEmojisHistory: Map<PlayerId, List<List<Emoji>>>,
     val lastFailedThreats: List<RoleThreat>,
     val openThreats: List<RoleThreat>,
+    val currentTime: Long,
     val roundEndingTime: Long,
     val currentPhase: Phase,
     val currentRoundNumber: Int,

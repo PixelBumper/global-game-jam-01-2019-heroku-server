@@ -60,6 +60,7 @@ class GameApi(
           throw ClientErrorException("You're not the owner of the room and hence can't start the room", 422)
         }
 
+        val time = clock.time()
         val randomGenerator = randomGenerators.getValue(roomName)
 
         val newRoom = Playing(
@@ -74,7 +75,8 @@ class GameApi(
             playerEmojisHistory = emptyMap(),
             lastFailedThreats = emptyList(),
             openThreats = randomGenerator.randomElements(room.possibleThreats, room.maxPossibleAmountOfThreats()),
-            roundEndingTime = clock.time().plusSeconds(room.roundLengthInSeconds).toEpochMilli(),
+            currentTime = time.toEpochMilli(),
+            roundEndingTime = time.plusSeconds(room.roundLengthInSeconds).toEpochMilli(),
             currentPhase = PHASE_EMOJIS,
             currentRoundNumber = 0,
             maxRoundNumber = room.numberOfRounds
@@ -158,6 +160,7 @@ class GameApi(
           var newRoom = when (currentPhase) {
             PHASE_EMOJIS -> room.copy(
                 version = room.version + 1,
+                currentTime = time.toEpochMilli(),
                 roundEndingTime = time.plusSeconds(room.roundLengthInSeconds).toEpochMilli(),
                 currentPhase = PHASE_ROLE
             )
@@ -169,6 +172,7 @@ class GameApi(
                 playerEmojisHistory = room.players.map { playerId -> playerId to room.playerEmojisHistory.getOrDefault(playerId, listOf()) + listOf(room.playerEmojis[playerId] ?: emptyList()) }.toMap(),
                 lastFailedThreats = room.lastFailedThreats + room.openThreats.selectiveMinus(room.playedPlayerRoles.values),
                 openThreats = randomGenerator.randomElements(room.possibleThreats, room.maxPossibleAmountOfThreats()),
+                currentTime = time.toEpochMilli(),
                 roundEndingTime = time.plusSeconds(room.roundLengthInSeconds).toEpochMilli(),
                 currentPhase = PHASE_EMOJIS,
                 currentRoundNumber = room.currentRoundNumber + 1
