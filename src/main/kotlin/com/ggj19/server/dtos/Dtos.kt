@@ -6,21 +6,10 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include
 import com.ggj19.server.dtos.RoomState.Playing
 import com.ggj19.server.dtos.RoomState.Room
 
-inline class RoleThreat(val value: String) {
-  override fun toString() = value
-}
-
-inline class PlayerId(val name: String) {
-  override fun toString() = name
-}
-
-inline class RoomName(val name: String) {
-  override fun toString() = name
-}
-
-inline class Emoji(val emoji: String) {
-  override fun toString() = emoji
-}
+typealias RoleThreat = String
+typealias PlayerId = String
+typealias RoomName = String
+typealias Emoji = String
 
 sealed class RoomState {
   abstract val players: List<PlayerId>

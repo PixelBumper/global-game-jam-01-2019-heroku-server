@@ -1,7 +1,6 @@
 package com.ggj19.server.api
 
 import com.ggj19.server.clock.Clock
-import com.ggj19.server.dtos.Emoji
 import com.ggj19.server.dtos.Phase
 import com.ggj19.server.dtos.Phase.PHASE_DOOMED
 import com.ggj19.server.dtos.Phase.PHASE_EMOJIS
@@ -90,7 +89,7 @@ class GameApi(
         return newRoom.asRoomInformation()
       }
     }
-  }
+    }
 
   @GET
   @Path("/create-room")
@@ -105,12 +104,12 @@ class GameApi(
   ): Room {
     val encodedPossibleThreats = possibleThreats.split(',')
         .filterNot { it.isBlank() }
-        .map { RoleThreat(it.trim()) }
+        .map { it.trim() }
     if (encodedPossibleThreats.size < 5) throw ClientErrorException("Not allowed to create a room with less than 5 possible threats", 422)
 
     // For the Game Jam we will assume we won't clash and override a room with the same name.
     val randomGenerator: RandomGenerator = DefaultRandomGenerator(seed)
-    val roomName = RoomName(randomGenerator.generateRoomName())
+    val roomName = randomGenerator.generateRoomName()
     randomGenerators[roomName] = randomGenerator
 
     val room = RoomState.Room(listOf(playerId), encodedPossibleThreats, roomName, playerId,
@@ -131,7 +130,7 @@ class GameApi(
     @NotNull @QueryParam("roomName") roomName: RoomName,
     @NotNull @QueryParam("playerId") playerId: PlayerId
   ): RoomInformation {
-    val room = getRoom(roomName) { if (it.players.contains(playerId)) throw ClientErrorException("You are already part of the room with the name: ${roomName.name}", 422) }
+    val room = getRoom(roomName) { if (it.players.contains(playerId)) throw ClientErrorException("You are already part of the room with the name: ${roomName}", 422) }
     val newRoom = room.copyJoining(playerId)
 
     synchronized(rooms) {
@@ -152,7 +151,7 @@ class GameApi(
       is Room -> room.asRoomInformation()
       is Playing -> {
         val time = clock.time()
-        val isRoundDue = Instant.ofEpochMilli(room.roundEndingTime) >= time
+        val isRoundDue = Instant.ofEpochMilli(room.roundEndingTime) < time
 
         val newRoom = if (isRoundDue) {
           val currentPhase = room.currentPhase
@@ -209,13 +208,13 @@ class GameApi(
   ): RoomInformation {
     val room = getRoom(roomName) {
       if (it is Room) throw ClientErrorException("Game hasn't started", 422)
-      if (!it.players.contains(playerId)) throw ClientErrorException("You are not part of the room with the name: ${roomName.name}", 422)
+      if (!it.players.contains(playerId)) throw ClientErrorException("You are not part of the room with the name: $roomName", 422)
       if (it is Playing && it.currentPhase != PHASE_EMOJIS) throw ClientErrorException("Game is not in emoji phase", 422)
     }
 
     val encodedEmojis = emojis.split(',')
         .filterNot { it.isBlank() }
-        .map { Emoji(it.trim()) }
+        .map { it.trim() }
 
     if (encodedEmojis.isEmpty() || encodedEmojis.size > 2) throw ClientErrorException("You must send between one and two Emojis :(", 422)
 
@@ -236,7 +235,7 @@ class GameApi(
   ): RoomInformation {
     val room = getRoom(roomName) {
       if (it is Room) throw ClientErrorException("Game hasn't started", 422)
-      if (!it.players.contains(playerId)) throw ClientErrorException("You are not part of the room with the name: ${roomName.name}", 422)
+      if (!it.players.contains(playerId)) throw ClientErrorException("You are not part of the room with the name: $roomName", 422)
       if (it is Playing && it.currentPhase != PHASE_ROLE) throw ClientErrorException("Game is not in role phase", 422)
     }
 
@@ -251,7 +250,7 @@ class GameApi(
     val room: RoomState
 
     synchronized(rooms) {
-      room = rooms[roomName] ?: throw NotFoundException("Can't find a room with the name: ${roomName.name}")
+      room = rooms[roomName] ?: throw NotFoundException("Can't find a room with the name: $roomName")
       validation.invoke(room)
       return room
     }
