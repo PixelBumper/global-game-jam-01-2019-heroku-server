@@ -24,6 +24,7 @@ import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.stereotype.Component
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 import javax.validation.constraints.NotNull
 import javax.ws.rs.ClientErrorException
 import javax.ws.rs.GET
@@ -161,7 +162,7 @@ class GameApi(
             PHASE_EMOJIS -> room.copy(
                 version = room.version + 1,
                 currentTime = time.toEpochMilli(),
-                roundEndingTime = time.plusSeconds(room.roundLengthInSeconds).toEpochMilli(),
+                roundEndingTime = room.roundEndingTime + TimeUnit.SECONDS.toMillis(room.roundLengthInSeconds),
                 currentPhase = PHASE_ROLE
             )
             PHASE_ROLE -> room.copy(
@@ -173,7 +174,7 @@ class GameApi(
                 lastFailedThreats = room.lastFailedThreats + room.openThreats.selectiveMinus(room.playedPlayerRoles.values),
                 openThreats = randomGenerator.randomElements(room.possibleThreats, room.maxPossibleAmountOfThreats()),
                 currentTime = time.toEpochMilli(),
-                roundEndingTime = time.plusSeconds(room.roundLengthInSeconds).toEpochMilli(),
+                roundEndingTime = room.roundEndingTime + TimeUnit.SECONDS.toMillis(room.roundLengthInSeconds),
                 currentPhase = PHASE_EMOJIS,
                 currentRoundNumber = room.currentRoundNumber + 1
             )
