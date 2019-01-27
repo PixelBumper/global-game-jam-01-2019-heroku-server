@@ -14,14 +14,11 @@ import com.ggj19.server.dtos.RoomState.Room
 import org.assertj.core.api.Java6Assertions.assertThat
 import org.junit.Before
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.test.context.junit4.SpringRunner
 import java.time.Instant
 import javax.ws.rs.ClientErrorException
 import javax.ws.rs.NotFoundException
 
-@SpringBootTest @RunWith(SpringRunner::class) class GameApiTests {
+class GameApiTests {
   private lateinit var clock: TestingClock
   private lateinit var gameApi: GameApi
 
