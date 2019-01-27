@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include
 import com.ggj19.server.dtos.RoomState.Playing
 import com.ggj19.server.dtos.RoomState.Room
 import java.time.Instant
+import java.util.*
 
 inline class RoleThreat(val value: String)
 inline class PlayerId(val name: String)
@@ -43,7 +44,7 @@ sealed class RoomState {
     val playerEmojisHistory: Map<PlayerId, List<List<Emoji>>>,
     val lastFailedThreats: List<RoleThreat>,
     val openThreats: List<RoleThreat>,
-    val roundEndingTime: Instant,
+    val roundEndingTime: Long,
     val currentPhase: Phase,
     val currentRoundNumber: Int,
     val maxRoundNumber: Int,
