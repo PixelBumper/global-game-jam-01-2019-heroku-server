@@ -154,11 +154,11 @@ class GameApi(
         val time = clock.time()
         val isRoundDue = Instant.ofEpochMilli(room.roundEndingTime) >= time
 
-        if (isRoundDue) {
+        val newRoom = if (isRoundDue) {
           val currentPhase = room.currentPhase
           val randomGenerator = randomGenerators.getValue(roomName)
 
-          var newRoom = when (currentPhase) {
+          var nextRoomState = when (currentPhase) {
             PHASE_EMOJIS -> room.copy(
                 version = room.version + 1,
                 currentTime = time.toEpochMilli(),
@@ -181,15 +181,20 @@ class GameApi(
             PHASE_DOOMED -> room // Forward the current state.
           }
 
-          if (newRoom.lastFailedThreats.size + newRoom.openThreats.size >= room.maximumThreats) {
-            newRoom = newRoom.copy(currentPhase = PHASE_DOOMED)
+          if (nextRoomState.lastFailedThreats.size + nextRoomState.openThreats.size >= room.maximumThreats) {
+            nextRoomState = nextRoomState.copy(currentPhase = PHASE_DOOMED)
           }
 
-          synchronized(rooms) { rooms[roomName] = newRoom }
-          newRoom.asRoomInformation()
+          nextRoomState
         } else {
-          room.asRoomInformation()
+          room.copy(
+              version = room.version + 1,
+              currentTime = time.toEpochMilli()
+          )
         }
+
+        synchronized(rooms) { rooms[roomName] = newRoom }
+        newRoom.asRoomInformation()
       }
     }
   }
