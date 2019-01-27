@@ -42,7 +42,7 @@ import javax.ws.rs.core.MediaType.APPLICATION_JSON
 class GameApi(
   private val clock: Clock
 ) {
-  private val rooms = HashMap<RoomName, RoomState>()
+  private val rooms = ConcurrentHashMap<RoomName, RoomState>()
   private val randomGenerators = ConcurrentHashMap<RoomName, RandomGenerator>()
 
   @GET
