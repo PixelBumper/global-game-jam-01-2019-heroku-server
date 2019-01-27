@@ -180,7 +180,7 @@ class GameApi(
             PHASE_DOOMED -> room // Forward the current state.
           }
 
-          if (nextRoomState.lastFailedThreats.size + nextRoomState.openThreats.size >= room.maximumThreats) {
+          if (nextRoomState.lastFailedThreats.size + nextRoomState.openThreats.size > room.maximumThreats) {
             nextRoomState = nextRoomState.copy(currentPhase = PHASE_DOOMED)
           }
 
